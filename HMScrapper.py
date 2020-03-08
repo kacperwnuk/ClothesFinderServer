@@ -1,8 +1,12 @@
 import re
 from typing import List
+
+from bs4 import BeautifulSoup
+
 from abstract import AbstractSortType, AbstractClothesType, AbstractSizeType, Scrapper
 from defaults import SortType, ClothesType, SizeType, Clothes, DetailedClothes
 import string
+
 
 class _HMSortType(AbstractSortType):
     sort_types = {
@@ -60,6 +64,10 @@ class HMScrapper(Scrapper):
     def __init__(self):
         super().__init__()
 
+    @property
+    def detailed_url(self):
+        return f"{super().detailed_url}.html"
+
     def generate_general_page_url(self):
         return f"{self.general_page_prefix}{self.url_filter}.html"
 
@@ -103,4 +111,16 @@ class HMScrapper(Scrapper):
             color = color_item.find('a')['title']
             colors.append(color)
 
-        print(f"{name} {price} {colors}")
+        description_container = page.find('div', class_='details parbase').find('div', class_='content pdp-text pdp-content')
+        description = description_container.find('p', class_='pdp-description-text').getText()
+
+        composition = page.find('div', class_='product-details-details sidedrawer__content').find_all_next('div', class_='details-attributes-list-item')[1].find('dd').getText()
+
+        # print(f"{name}\n{price}\n{colors}\n{description}\n{composition}")
+        print(f"{name} {price} {colors} {description} {composition}")
+        return DetailedClothes(id, name, price, description, colors, composition)
+
+    # def beautiful_page(self, url):
+    #     import os
+    #     with open(f"{os.getcwd()}\\tmp\HMTshirt.html", encoding='utf-8') as f:
+    #         return BeautifulSoup(f, 'html.parser')

@@ -1,11 +1,11 @@
 import enum
 
-
 class Clothes:
     def __init__(self, id, name, price):
         self.id = id
         self.name = name
         self.price = price
+        # self.shop = shop
 
     def json(self):
         return self.__dict__

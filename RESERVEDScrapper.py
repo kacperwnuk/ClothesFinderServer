@@ -17,3 +17,4 @@ class RESERVEDScrapper(HOUSEScrapper):
     clothes_type_class = _RESERVEDClothesType
 
     general_page_prefix = 'https://www.reserved.com/pl/pl/man/all-3/clothes/'
+    detail_page_prefix = 'https://www.reserved.com/pl/pl/'

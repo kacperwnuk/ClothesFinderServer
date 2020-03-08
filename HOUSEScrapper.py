@@ -1,8 +1,11 @@
 import re
 from typing import List
 
+from bs4 import BeautifulSoup
+from requests_html import HTMLSession
+
 from abstract import Scrapper, AbstractClothesType, AbstractSortType, AbstractSizeType
-from defaults import Clothes, ClothesType, SortType, SizeType
+from defaults import Clothes, ClothesType, SortType, SizeType, DetailedClothes
 
 
 class _HOUSEClothesType(AbstractClothesType):
@@ -48,6 +51,7 @@ class HOUSEScrapper(Scrapper):
     clothes_type_class = _HOUSEClothesType
 
     general_page_prefix = "https://www.housebrand.com/pl/pl/on/kolekcja/"
+    detail_page_prefix = "https://www.housebrand.com/pl/pl/"
 
     def __init__(self):
         super().__init__()
@@ -74,8 +78,44 @@ class HOUSEScrapper(Scrapper):
                 sale_text = sale_text.findChildren('span')[0]
                 price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
 
-            id = product_item['data-sku']
+            id = str.lower(product_item['data-sku'])
             name = product_item.find('figcaption', class_='es-product-name').getText()
             products.append(Clothes(id, name, price))
 
         return products
+
+    def get_clothes_type_detailed_data(self, id) -> DetailedClothes:
+        self.load_id(id)
+        page = self.beautiful_page(self.detailed_url)
+
+        name = page.find('h1', class_='product-name').getText()
+        price_text = page.find('div', class_='regular-price').getText()
+        price = float(re.search("\\d+,\\d+", price_text).group(0).replace(',', '.'))
+
+        colors = []
+
+        for li in page.find('ul', class_='color-picker').children:
+            colors.append(li.button.img['title'])
+
+        description = page.find('section', class_='product-description').getText()
+
+        composition = ""
+        for li in page.find('ul', class_='composition-list').children:
+            composition += li.getText()
+
+        # print(f"{name}\n{price_text}\n{colors}\n{description}\n{composition}")
+        print(f"{name} {price_text} {colors} {description} {composition}")
+        return DetailedClothes(id, name, price, description, colors, composition)
+
+        # print(f"{}\n")
+
+    def beautiful_page(self, url):
+
+        session = HTMLSession()
+        r = session.get(url)
+        r.html.render()
+
+        return BeautifulSoup(r.html.html, 'html.parser')
+    #     import os
+    #     with open(f"{os.getcwd()}\\tmp\HOUSETshirt.html", encoding='utf-8') as f:
+    #         return BeautifulSoup(f, 'html.parser')

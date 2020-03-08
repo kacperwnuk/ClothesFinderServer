@@ -3,6 +3,7 @@ from typing import List
 
 import requests
 from bs4 import BeautifulSoup
+from requests_html import HTMLSession
 
 from defaults import SortType, ClothesType, SizeType, Clothes, DetailedClothes
 
@@ -76,7 +77,7 @@ class Scrapper(abc.ABC):
 
     @property
     def detailed_url(self):
-        return f"{self.detail_page_prefix}{self.detail_id}.html"
+        return f"{self.detail_page_prefix}{self.detail_id}"
 
     def generate_general_page_url(self):
         return f"{self.general_page_prefix}{self.url_filter}"
@@ -91,7 +92,11 @@ class Scrapper(abc.ABC):
     def beautiful_page(self, url):
         html_file = requests.get(url, headers={"User-agent":
                                                    "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:54.0) Gecko/20100101 Firefox/73.0"})
-        return BeautifulSoup(html_file.content, 'html.parser')
+
+        # import os
+        # with open(f"{os.getcwd()}\\tmp\HOUSETshirt.html", encoding='UTF-8', mode='w') as f:
+        #     f.write(r.html.html)
+        return BeautifulSoup(html_file.text, 'html.parser')
 
     def retrieve_general_data(self, filters):
         clothes = self.get_clothes_type_general_data(filters)

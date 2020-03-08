@@ -1,5 +1,5 @@
 import itertools
-
+from multiprocessing import Pool
 from RESERVEDScrapper import RESERVEDScrapper
 from HMScrapper import HMScrapper
 from HOUSEScrapper import HOUSEScrapper
@@ -11,22 +11,33 @@ scrapper_mapping = {
     'RESERVED': RESERVEDScrapper,
 }
 
-detailed_request = {
+detailed_request_hm = {
     'id': '0684021066',
     'shop': 'HM',
 }
 
-request = {
-    'sort_type': 2,
-    'size': 'M',
-    'type': 'Marynarki'
+detailed_request_reserved = {
+    'id': 'xk836-59x',
+    'shop': 'RESERVED',
+}
+
+detailed_request_house = {
+    # 'id': 'yu781-01x',
+    'id': 'yf626-85m',
+    'shop': 'HOUSE',
 }
 
 # request = {
 #     'sort_type': 2,
 #     'size': 'M',
-#     'type': 'T-Shirty'
+#     'type': 'Marynarki'
 # }
+
+request = {
+    'sort_type': 2,
+    'size': 'M',
+    'type': 'T-Shirty'
+}
 
 transformed_request = transform_request(request)
 scrapper_classes = [HMScrapper, HOUSEScrapper, RESERVEDScrapper]
@@ -41,20 +52,44 @@ def find_clothes():
     scrappers = create_scrappers(scrapper_classes)
     clothes = [scrapper.retrieve_general_data(transformed_request) for scrapper in scrappers]
     clothes = list(itertools.chain(*clothes))
-    print(clothes)
+    return clothes
+    # print(clothes)
 
 
-def find_info():
+def find_info(detailed_request):
     scrapper = scrapper_mapping[detailed_request['shop']]()
     clothes_info = scrapper.get_clothes_type_detailed_data(detailed_request['id'])
-    print(clothes_info)
+    return clothes_info
+    # print(clothes_info.json())
 
 
 if __name__ == '__main__':
     # find_clothes()
+    # rs = RESERVEDScrapper()
+    rs = HMScrapper()
+    clothes = rs.get_clothes_type_general_data(transformed_request)
 
-    find_info()
+    # clothes = find_clothes()
+    ids = [cloth.id for cloth in clothes]
+    print(ids)
 
+    from time import perf_counter
+
+    t1 = perf_counter()
+    p = Pool(3)
+    p.map(rs.get_clothes_type_detailed_data, ids)
+    p.terminate()
+    p.join()
+    t2 = perf_counter()
+    print(t2 - t1)
+    info = []
+    # for id in ids:
+    #     cloth_info = rs.get_clothes_type_detailed_data(id)
+    #     info.append(rs.get_clothes_type_detailed_data(id).json())
+    #     # print(cloth_info.json())
+    # print(info)
+
+    # print(find_info(detailed_request_reserved).json())
     # RESERVEDScrapper(transformed_request).retrieve_general_data()
 
     # retrieve_data(clothes_types, request)
