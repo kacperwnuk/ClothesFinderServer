@@ -3,9 +3,9 @@ from typing import List
 
 import requests
 from bs4 import BeautifulSoup
-from requests_html import HTMLSession
 
-from defaults import SortType, ClothesType, SizeType, Clothes, DetailedClothes
+from ClothesSearchApp.models import Clothes, DetailedClothes
+from ClothesSearchApp.scrappers.defaults import SortType, ClothesType, SizeType
 
 
 class AbstractSortType(abc.ABC):
@@ -99,12 +99,10 @@ class Scrapper(abc.ABC):
         return BeautifulSoup(html_file.text, 'html.parser')
 
     def retrieve_general_data(self, filters):
-        clothes = self.get_clothes_type_general_data(filters)
-        return [cloth.json() for cloth in clothes]
+        return self.get_clothes_type_general_data(filters)
 
     def retrieve_detailed_data(self, id):
-        clothes_info = self.get_clothes_type_detailed_data(id)
-        return clothes_info.json()
+        return self.get_clothes_type_detailed_data(id)
 
     @abc.abstractmethod
     def get_clothes_type_general_data(self, filters) -> List[Clothes]:

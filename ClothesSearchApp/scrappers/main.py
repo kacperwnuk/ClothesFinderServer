@@ -1,9 +1,9 @@
 import itertools
 from multiprocessing import Pool
-from RESERVEDScrapper import RESERVEDScrapper
-from HMScrapper import HMScrapper
-from HOUSEScrapper import HOUSEScrapper
-from defaults import transform_request
+from ClothesSearchApp.scrappers.RESERVEDScrapper import RESERVEDScrapper
+from ClothesSearchApp.scrappers.HMScrapper import HMScrapper
+from ClothesSearchApp.scrappers.HOUSEScrapper import HOUSEScrapper
+from ClothesSearchApp.scrappers.defaults import transform_request
 
 scrapper_mapping = {
     'HM': HMScrapper,

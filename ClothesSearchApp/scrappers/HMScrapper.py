@@ -1,11 +1,9 @@
 import re
 from typing import List
 
-from bs4 import BeautifulSoup
-
-from abstract import AbstractSortType, AbstractClothesType, AbstractSizeType, Scrapper
-from defaults import SortType, ClothesType, SizeType, Clothes, DetailedClothes
-import string
+from ClothesSearchApp.models import Clothes, DetailedClothes
+from ClothesSearchApp.scrappers.abstract import AbstractSortType, AbstractClothesType, AbstractSizeType, Scrapper
+from ClothesSearchApp.scrappers.defaults import SortType, ClothesType, SizeType
 
 
 class _HMSortType(AbstractSortType):

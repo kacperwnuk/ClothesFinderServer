@@ -1,25 +1,26 @@
 import enum
 
-class Clothes:
-    def __init__(self, id, name, price):
-        self.id = id
-        self.name = name
-        self.price = price
-        # self.shop = shop
 
-    def json(self):
-        return self.__dict__
-
-
-class DetailedClothes(Clothes):
-    def __init__(self, id, name, price, description, colors, composition):
-        super().__init__(id, name, price)
-        self.description = description
-        self.colors = colors
-        self.composition = composition
-
-    def json(self):
-        return self.__dict__
+# class Clothes:
+#     def __init__(self, id, name, price):
+#         self.id = id
+#         self.name = name
+#         self.price = price
+#         # self.shop = shop
+#
+#     def json(self):
+#         return self.__dict__
+#
+#
+# class DetailedClothes(Clothes):
+#     def __init__(self, id, name, price, description, colors, composition):
+#         super().__init__(id, name, price)
+#         self.description = description
+#         self.colors = colors
+#         self.composition = composition
+#
+#     def json(self):
+#         return self.__dict__
 
 
 class SortType(enum.Enum):
@@ -35,6 +36,7 @@ class ClothesType(enum.Enum):
     SHORTS = 'Szorty'
     JEANS = 'Dżinsy'
     JACKET = 'Marynarki'
+    SWEATER = 'Swetry'
 
 
 class SizeType(enum.Enum):

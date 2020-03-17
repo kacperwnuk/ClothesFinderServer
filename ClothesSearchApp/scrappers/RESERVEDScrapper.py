@@ -1,6 +1,6 @@
-from HOUSEScrapper import HOUSEScrapper
-from abstract import AbstractClothesType
-from defaults import ClothesType
+from ClothesSearchApp.scrappers.HOUSEScrapper import HOUSEScrapper
+from ClothesSearchApp.scrappers.abstract import AbstractClothesType
+from ClothesSearchApp.scrappers.defaults import ClothesType
 
 
 class _RESERVEDClothesType(AbstractClothesType):

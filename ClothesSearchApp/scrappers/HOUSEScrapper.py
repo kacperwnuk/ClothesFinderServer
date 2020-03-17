@@ -4,9 +4,9 @@ from typing import List
 from bs4 import BeautifulSoup
 from requests_html import HTMLSession
 
-from abstract import Scrapper, AbstractClothesType, AbstractSortType, AbstractSizeType
-from defaults import Clothes, ClothesType, SortType, SizeType, DetailedClothes
-
+from ClothesSearchApp.models import Clothes, DetailedClothes
+from ClothesSearchApp.scrappers.abstract import Scrapper, AbstractClothesType, AbstractSortType, AbstractSizeType
+from ClothesSearchApp.scrappers.defaults import ClothesType, SortType, SizeType
 
 class _HOUSEClothesType(AbstractClothesType):
     clothes_types = {
