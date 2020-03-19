@@ -1,9 +1,15 @@
 import re
 from typing import List
 
-from ClothesSearchApp.models import Clothes, DetailedClothes
-from ClothesSearchApp.scrappers.abstract import AbstractSortType, AbstractClothesType, AbstractSizeType, Scrapper
-from ClothesSearchApp.scrappers.defaults import SortType, ClothesType, SizeType
+from django import db
+from django.db import IntegrityError, transaction
+
+from ClothesSearchApp.models import Clothes, DetailedClothes, Shop, Color, Size, Type
+from ClothesSearchApp.scrappers.abstract import AbstractSortType, AbstractClothesType, AbstractSizeType, Scrapper, \
+    AbstractColorType
+from ClothesSearchApp.scrappers.defaults import SortType, ClothesType, SizeType, ColorType
+
+db.connections.close_all()
 
 
 class _HMSortType(AbstractSortType):
@@ -25,8 +31,8 @@ class _HMClothesType(AbstractClothesType):
         ClothesType.SHIRT: 'koszule',
         ClothesType.PANTS: 'spodnie',
         ClothesType.SHORTS: 'szorty',
-        ClothesType.JEANS: 'dzinsy',
         ClothesType.JACKET: 'marynarki-i-garnitury',
+        ClothesType.SWEATER: 'kardigany-i-swetry'
     }
 
     def __init__(self, clothes_type: ClothesType):
@@ -48,12 +54,34 @@ class _HMSizeType(AbstractSizeType):
         super().__init__(size_type)
 
 
+class _HMColorType(AbstractColorType):
+    color_types = {
+        ColorType.WHITE: 'biały_ffffff',
+        ColorType.BLACK: 'czarny_000000',
+        ColorType.GREEN: 'zielony_008000',
+        ColorType.BLUE: 'niebieski_0000ff',
+        ColorType.PINK: 'różowy_ffc0cb',
+        # ColorType.WHITE_BONE: 'Kość słoniowa',
+        ColorType.RED: 'czerwony_ff0000',
+        ColorType.GREY: 'szary_808080',
+        ColorType.BEIGE: 'beżowy_f5f5dc',
+        ColorType.BROWN: 'brązowy_a52a2a',
+        # ColorType.DARK_BLUE: 'Granatowy',
+        ColorType.TURQUOISE: 'turkusowy_40e0d0',
+    }
+    key = 'colorWithNames'
+
+    def __init__(self, color_type: ColorType):
+        super().__init__(color_type)
+
+
 class HMScrapper(Scrapper):
     active_filters = {
         'sort_type': _HMSortType,
         'size': _HMSizeType,
+        'color': _HMColorType,
     }
-
+    shop_name = 'HM'
     clothes_type_class = _HMClothesType
 
     general_page_prefix = "https://www2.hm.com/pl_pl/on/produkty/"
@@ -69,9 +97,9 @@ class HMScrapper(Scrapper):
     def generate_general_page_url(self):
         return f"{self.general_page_prefix}{self.url_filter}.html"
 
-    def get_clothes_type_general_data(self, filters) -> List[Clothes]:
+    def get_clothes_type_general_data(self, request) -> List[Clothes]:
 
-        self.load_filters(filters)
+        self.load_filters(request)
         page = self.beautiful_page(self.general_url)
         products_container = page.find('ul', class_='products-listing small')
 
@@ -85,38 +113,63 @@ class HMScrapper(Scrapper):
             else:
                 price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
 
+            img_link = product_item.find(class_='image-container').a.img['data-src']
             clothes_id_and_name = product_item.find(class_="item-link")
             name = clothes_id_and_name['title']
             id = re.search(".\\d+.", clothes_id_and_name['href']).group(0)[1:-1]
-            products.append(Clothes(id, name, price))
 
+            color = Color.objects.get(name=request['color'].value)
+            size = Size.objects.get(name=request['size'].value)
+            shop = Shop.objects.get(name=self.shop_name)
+            type = Type.objects.get(name=request['type'].value)
+            try:
+                c = Clothes.objects.create(key=id, name=name, type=type, price=price, shop=shop, img_link=img_link)
+                products.append(c)
+            except IntegrityError:
+                transaction.commit()
+                c = Clothes.objects.get(key=id)
+                print(f"{id} {name} {color} {request}")
+            finally:
+                c.img_link = img_link
+                c.colors.add(color)
+                c.sizes.add(size)
+                c.save()
+                transaction.commit()
         return products
 
-    def get_clothes_type_detailed_data(self, id) -> DetailedClothes:
-        self.load_id(id)
+    def get_clothes_type_detailed_data(self, key) -> DetailedClothes:
+        self.load_key(key)
         page = self.beautiful_page(self.detailed_url)
 
-        name_price = page.find('section', class_='name-price')
-        name = name_price.find('h1', class_='primary product-item-headline').getText()
-        name = name.strip()
-
-        price_text = name_price.find('span', class_='price-value').getText()
-        price = float(re.search("\\d+,\\d+", price_text).group(0).replace(',', '.'))
-
-        colors = []
-        colors_container = page.find('div', class_='mini-slider').find('ul', class_='inputlist clearfix')
-        for color_item in colors_container.find_all_next('li', class_='list-item hidden'):
-            color = color_item.find('a')['title']
-            colors.append(color)
-
-        description_container = page.find('div', class_='details parbase').find('div', class_='content pdp-text pdp-content')
+        description_container = page.find('div', class_='details parbase').find('div',                                                                         class_='content pdp-text pdp-content')
         description = description_container.find('p', class_='pdp-description-text').getText()
 
-        composition = page.find('div', class_='product-details-details sidedrawer__content').find_all_next('div', class_='details-attributes-list-item')[1].find('dd').getText()
+        composition = ''
+        for attribute_item in page.find('div', class_='product-details-details sidedrawer__content').find_all_next('div',
+                                                                                                           class_='details-attributes-list-item'):
+            if attribute_item.dt.getText() == 'Skład':
+                composition = attribute_item.dd.getText()
 
         # print(f"{name}\n{price}\n{colors}\n{description}\n{composition}")
-        print(f"{name} {price} {colors} {description} {composition}")
-        return DetailedClothes(id, name, price, description, colors, composition)
+        print(f"{description} {composition}")
+        try:
+            general_info = Clothes.objects.get(key=key)
+            dc = DetailedClothes.objects.create(clothes=general_info, description=description, composition=composition, img_link='')
+            dc.save()
+            transaction.commit()
+            return dc
+        except IntegrityError:
+            print(f"Integrity Error ")
+            dc = DetailedClothes.objects.get(clothes__key=key)
+            dc.composition = composition
+            dc.description = description
+            dc.save()
+            transaction.commit()
+        except:
+            print(f"Exception raised")
+            return None
+
+
 
     # def beautiful_page(self, url):
     #     import os

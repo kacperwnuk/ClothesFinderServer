@@ -1,16 +1,17 @@
 import itertools
 
+import django
 from django.contrib.auth.models import User
 from django.db.models import Q
 from rest_framework import status
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.generics import get_object_or_404, ListAPIView
-from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ClothesSearchApp.models import Clothes, DetailedClothes, TypeColors, Color, Size
+from ClothesSearchApp.models import Clothes, DetailedClothes, Type, Color, Size
 from ClothesSearchApp.scrappers import HMScrapper, HOUSEScrapper, RESERVEDScrapper
+# from ClothesSearchApp.scrappers.main import scrapper_test, get_clothes_general_info
 from ClothesSearchApp.serializers import ClothesSerializer, DetailedClothesSerializer, TypeColorsSerializer
 
 scrapper_mapping = {
@@ -31,19 +32,19 @@ class ClothesView(ListAPIView):
 
         type = self.request.query_params.get('type')
         if type:
-            filters &= Q(type=type)
+            filters &= Q(type__name=type)
             # clothes = clothes.filter(type=type)
         else:
             pass
 
         color = self.request.query_params.get('color')
         if color:
-            filters &= Q(detailedclothes___colors__in=color)
+            filters &= Q(colors__name=color)
             # clothes = clothes.filter(detailedclothes__colors__in=color)
 
         size = self.request.query_params.get('size')
         if size:
-            filters &= Q(sizes__name__in=size)
+            filters &= Q(sizes__name=size)
             # clothes = clothes.filter(sizes_)
 
         lower_price = self.request.query_params.get('lowerPrice')
@@ -108,19 +109,19 @@ class FavouriteClothesView(APIView):
 class TypeColorView(APIView):
 
     def get(self, request, cloth_type):
-        type_colors = TypeColors.objects.filter(cloth_type=cloth_type)
+        type_colors = Type.objects.filter(cloth_type=cloth_type)
         return Response(TypeColorsSerializer(type_colors, many=True).data)
 
     def post(self, request, cloth_type):
         # laduj baze
         colors_dict = {
-            'T-SHIRT': {'Beżowy', 'Czarny', 'Bialy',
+            'T-SHIRT': {'Beżowy', 'Czarny', 'Biały',
                         'Turkusowy', 'Kość słoniowa', 'Niebieski', 'Zielony', 'Szary'},
-            'SHIRT': {'Czerwony', 'Brązowy', 'Beżowy', 'Czarny', 'Bialy',
+            'SHIRT': {'Czerwony', 'Brązowy', 'Beżowy', 'Czarny', 'Biały',
                       'Kość słoniowa', 'Niebieski', 'Zielony', 'Szary', 'Granatowy'},
             'PANTS': {'Brązowy', 'Beżowy', 'Czarny', 'Niebieski',
                       'Zielony', 'Szary', 'Granatowy'},
-            'SHORTS': {'Czerwony', 'Brązowy', 'Czarny', 'Bialy', 'Różowy', 'Niebieski', 'Zielony', 'Szary',
+            'SHORTS': {'Czerwony', 'Brązowy', 'Czarny', 'Biały', 'Różowy', 'Niebieski', 'Zielony', 'Szary',
                        },
             'JACKET': {'Brązowy', 'Czarny', 'Niebieski', 'Zielony', 'Szary',
                        'Granatowy'},
@@ -135,35 +136,12 @@ class TypeColorView(APIView):
             Color(name=color).save()
 
         for cloth_type in colors_dict:
-            TypeColors(cloth_type=cloth_type).save()
+            Type(cloth_type=cloth_type).save()
 
         for key, value in colors_dict.items():
             for color in value:
                 c = Color.objects.get(name=color)
-                TypeColors.objects.get(cloth_type=key).colors.add(c)
+                Type.objects.get(cloth_type=key).colors.add(c)
 
         return Response(status=status.HTTP_200_OK)
 
-
-@api_view()
-# @renderer_classes(JSONRenderer)
-def load_db(request):
-    # if request.method == 'GET':
-    # TODO przejsc po typach ubran, po wszystkich kolorach i rozmiarach
-    reqs = []
-    for (cloth_type, _) in TypeColors.TYPES:
-        for (size, _) in Size.SIZES:
-            for color in TypeColors.objects.get(cloth_type=cloth_type).colors.all():
-                req = _create_request(cloth_type, size, color)
-                reqs.append(req)
-    print(len(reqs))
-    return Response({}, status=status.HTTP_200_OK)
-
-
-def _create_request(cloth_type, size, color):
-    return {
-        'sort_type': 3,
-        'size': size,
-        'type': cloth_type,
-        'color': color
-    }

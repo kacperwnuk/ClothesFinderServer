@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from ClothesSearchApp.models import DetailedClothes, Clothes, Color, Shop, TypeColors
+from ClothesSearchApp.models import DetailedClothes, Clothes, Color, Shop, Type, Size
 
 
 class ShopSerializer(serializers.ModelSerializer):
@@ -18,9 +18,10 @@ class ColorSerializer(serializers.ModelSerializer):
 class ClothesSerializer(serializers.ModelSerializer):
     shop = serializers.SlugRelatedField(slug_field='name', queryset=Shop.objects.all())
     colors = serializers.SlugRelatedField(many=True, queryset=Color.objects.all(), slug_field='name')
+    sizes = serializers.SlugRelatedField(many=True, queryset=Size.objects.all(), slug_field='name')
 
     class Meta:
-        fields = ['key', 'name', 'price', 'shop', 'type', 'colors']
+        fields = ['key', 'name', 'price', 'shop', 'type', 'colors', 'sizes']
         model = Clothes
 
 
@@ -45,4 +46,4 @@ class TypeColorsSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = ['colors']
-        model = TypeColors
+        model = Type

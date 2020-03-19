@@ -34,25 +34,7 @@ class Size(models.Model):
         return self.name
 
 
-class Clothes(models.Model):
-    key = models.CharField(max_length=50, null=False, blank=False, unique=True)
-    type = models.CharField(max_length=100, null=False, blank=False)
-    name = models.CharField(max_length=100, null=False, blank=False)
-    price = models.DecimalField(max_digits=7, decimal_places=2)
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
-    users = models.ManyToManyField(User)
-    sizes = models.ManyToManyField(Size)
-    colors = models.ManyToManyField(Color)
-
-
-class DetailedClothes(models.Model):
-    clothes = models.OneToOneField(Clothes, blank=False, null=False, on_delete=models.CASCADE)
-    description = models.CharField(max_length=200, default='')
-    composition = models.CharField(max_length=100, default='')
-    img_link = models.URLField(null=False)
-
-
-class TypeColors(models.Model):
+class Type(models.Model):
     T_SHIRT = 'T-SHIRT'
     SHIRT = 'SHIRT'
     PANTS = 'PANTS'
@@ -67,5 +49,32 @@ class TypeColors(models.Model):
         (JACKET, 'Marynarki'),
         (SWEATER, 'Swetry'),
     ]
-    cloth_type = models.CharField(choices=TYPES, max_length=10)
+    name = models.CharField(choices=TYPES, max_length=10)
     colors = models.ManyToManyField(Color)
+
+    def __str__(self):
+        return f"{self.name} {self.colors}"
+
+
+class Clothes(models.Model):
+    key = models.CharField(max_length=50, null=False, blank=False, unique=True)
+    type = models.ForeignKey(Type, null=False, blank=False, on_delete=models.DO_NOTHING)
+    name = models.CharField(max_length=100, null=False, blank=False)
+    price = models.DecimalField(max_digits=7, decimal_places=2)
+    img_link = models.URLField(null=False, default='')
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
+    users = models.ManyToManyField(User)
+    sizes = models.ManyToManyField(Size)
+    colors = models.ManyToManyField(Color)
+
+    def __str__(self):
+        return f"{self.key} {self.type} {self.name}"
+
+
+class DetailedClothes(models.Model):
+    clothes = models.OneToOneField(Clothes, blank=False, null=False, on_delete=models.CASCADE)
+    description = models.CharField(max_length=200, default='')
+    composition = models.CharField(max_length=200, default='')
+
+    def __str__(self):
+        return f"{self.clothes.__str__()} {self.composition}"

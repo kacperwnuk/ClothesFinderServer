@@ -30,13 +30,13 @@ class SortType(enum.Enum):
 
 
 class ClothesType(enum.Enum):
-    T_SHIRT = 'T-Shirty'
-    SHIRT = 'Koszule'
-    PANTS = 'Spodnie'
-    SHORTS = 'Szorty'
-    JEANS = 'Dżinsy'
-    JACKET = 'Marynarki'
-    SWEATER = 'Swetry'
+    T_SHIRT = 'T-SHIRT'
+    SHIRT = 'SHIRT'
+    PANTS = 'PANTS'
+    SHORTS = 'SHORTS'
+    JACKET = 'JACKET'
+    SWEATER = 'SWEATER'
+    JEANS = 'JEANS'
 
 
 class SizeType(enum.Enum):
@@ -48,6 +48,21 @@ class SizeType(enum.Enum):
     XXL = 'XXL'
 
 
+class ColorType(enum.Enum):
+    WHITE = 'Biały'
+    BLACK = 'Czarny'
+    GREEN = 'Zielony'
+    BLUE = 'Niebieski'
+    PINK = 'Różowy'
+    WHITE_BONE = 'Kość słoniowa'
+    RED = 'Czerwony'
+    GREY = 'Szary'
+    BEIGE = 'Beżowy'
+    BROWN = 'Brązowy'
+    DARK_BLUE = 'Granatowy'
+    TURQUOISE = 'Turkusowy'
+
+
 def transform_request(request):
     transformed_request = {}
     for key, value in request.items():
@@ -55,6 +70,8 @@ def transform_request(request):
             transformed_request[key] = SortType(value)
         elif key == 'size':
             transformed_request[key] = SizeType(value)
+        elif key == 'color':
+            transformed_request[key] = ColorType(value)
         elif key == 'type':
             transformed_request[key] = ClothesType(value)
     return transformed_request

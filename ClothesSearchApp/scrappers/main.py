@@ -1,9 +1,13 @@
 import itertools
 from multiprocessing import Pool
+
+from django import db
+
 from ClothesSearchApp.scrappers.RESERVEDScrapper import RESERVEDScrapper
 from ClothesSearchApp.scrappers.HMScrapper import HMScrapper
 from ClothesSearchApp.scrappers.HOUSEScrapper import HOUSEScrapper
 from ClothesSearchApp.scrappers.defaults import transform_request
+from time import perf_counter
 
 scrapper_mapping = {
     'HM': HMScrapper,
@@ -36,7 +40,8 @@ detailed_request_house = {
 request = {
     'sort_type': 2,
     'size': 'M',
-    'type': 'T-Shirty'
+    'type': 'T-SHIRT',
+    'color': 'Czerwony',
 }
 
 transformed_request = transform_request(request)
@@ -63,25 +68,45 @@ def find_info(detailed_request):
     # print(clothes_info.json())
 
 
+hs = HMScrapper()
+rs = RESERVEDScrapper()
+
+
+def get_clothes_general_info(requests):
+    trs = [transform_request(request) for request in requests]
+    clothes = []
+    for tr in trs:
+        clothes += hs.get_clothes_type_general_data(tr)
+    # p = Pool(2)
+    # clothes = p.map(hs.get_clothes_type_general_data, trs)
+    # p.terminate()
+    # p.join()
+    return clothes
+
+
+def scrapper_test(request):
+    # t1 = perf_counter()
+
+    tr = transform_request(request)
+    hs.load_filters(tr)
+
+    # t2 = perf_counter()
+    # print(t2-t1)
+    # print(hs.get_clothes_type_general_data(tr))
+    return hs.get_clothes_type_general_data(tr)
+
+
+scrapper_classes
+
 if __name__ == '__main__':
     # find_clothes()
     # rs = RESERVEDScrapper()
-    rs = HMScrapper()
-    clothes = rs.get_clothes_type_general_data(transformed_request)
-
+    load_db()
+    # rs = HMScrapper()
+    # clothes = rs.get_clothes_type_general_data(transformed_request)
+    # print(clothes)
     # clothes = find_clothes()
-    ids = [cloth.id for cloth in clothes]
-    print(ids)
 
-    from time import perf_counter
-
-    t1 = perf_counter()
-    p = Pool(3)
-    p.map(rs.get_clothes_type_detailed_data, ids)
-    p.terminate()
-    p.join()
-    t2 = perf_counter()
-    print(t2 - t1)
     info = []
     # for id in ids:
     #     cloth_info = rs.get_clothes_type_detailed_data(id)
@@ -94,3 +119,14 @@ if __name__ == '__main__':
 
     # retrieve_data(clothes_types, request)
     # HMScrapper(transform_request(request)).retrieve_data()
+
+    # ids = [cloth.id for cloth in clothes]
+    # print(ids)
+    #
+    # t1 = perf_counter()
+    # p = Pool(3)
+    # p.map(rs.get_clothes_type_detailed_data, ids)
+    # p.terminate()
+    # p.join()
+    # t2 = perf_counter()
+    # print(t2 - t1)

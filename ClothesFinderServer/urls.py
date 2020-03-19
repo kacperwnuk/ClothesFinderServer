@@ -23,5 +23,5 @@ urlpatterns = [
     path('detailed/', clothes_views.DetailedClothesView.as_view()),
     path('favourites/<str:username>', clothes_views.FavouriteClothesView.as_view()),
     path('colors/<str:cloth_type>', clothes_views.TypeColorView.as_view()),
-    path('load/', clothes_views.load_db),
+
 ]

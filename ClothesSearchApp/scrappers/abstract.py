@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from ClothesSearchApp.models import Clothes, DetailedClothes
-from ClothesSearchApp.scrappers.defaults import SortType, ClothesType, SizeType
+from ClothesSearchApp.scrappers.defaults import SortType, ClothesType, SizeType, ColorType
 
 
 class AbstractSortType(abc.ABC):
@@ -18,6 +18,20 @@ class AbstractSortType(abc.ABC):
     def convert_type(self, sort_type):
         try:
             return self.sort_types[sort_type]
+        except KeyError:
+            return ''
+
+
+class AbstractColorType(abc.ABC):
+    color_types = {}
+    key = ''
+
+    def __init__(self, color_type: ColorType):
+        self.value = self.convert_type(color_type)
+
+    def convert_type(self, color_type):
+        try:
+            return self.color_types[color_type]
         except KeyError:
             return ''
 
@@ -48,6 +62,7 @@ class AbstractSizeType(abc.ABC):
 
 class Scrapper(abc.ABC):
     active_filters = {}
+    shop_name = ''
     clothes_type_class = None
     general_page_prefix = ''
     detail_page_prefix = ''
@@ -55,9 +70,10 @@ class Scrapper(abc.ABC):
     def __init__(self):
         self.query_filters = []
         self.url_filter = None
-        self.detail_id = None
+        self.detail_key = None
 
     def load_filters(self, filters):
+        self.query_filters = []
         for key, value in filters.items():
             if key in self.active_filters:
                 try:
@@ -68,8 +84,8 @@ class Scrapper(abc.ABC):
             elif key == 'type':
                 self.url_filter = self.clothes_type_class(value).value
 
-    def load_id(self, id):
-        self.detail_id = id
+    def load_key(self, key):
+        self.detail_key = key
 
     @property
     def general_url(self):
@@ -77,7 +93,7 @@ class Scrapper(abc.ABC):
 
     @property
     def detailed_url(self):
-        return f"{self.detail_page_prefix}{self.detail_id}"
+        return f"{self.detail_page_prefix}{self.detail_key}"
 
     def generate_general_page_url(self):
         return f"{self.general_page_prefix}{self.url_filter}"
@@ -86,7 +102,7 @@ class Scrapper(abc.ABC):
         query = "?"
         for filter in self.query_filters:
             query += f"{filter.key}={filter.value}&"
-        # query += f"page-size=300"
+        query += f"page-size=100"
         return query
 
     def beautiful_page(self, url):
