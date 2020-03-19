@@ -154,7 +154,7 @@ class HMScrapper(Scrapper):
         print(f"{description} {composition}")
         try:
             general_info = Clothes.objects.get(key=key)
-            dc = DetailedClothes.objects.create(clothes=general_info, description=description, composition=composition, img_link='')
+            dc = DetailedClothes.objects.create(clothes=general_info, description=description, composition=composition)
             dc.save()
             transaction.commit()
             return dc
@@ -165,8 +165,8 @@ class HMScrapper(Scrapper):
             dc.description = description
             dc.save()
             transaction.commit()
-        except:
-            print(f"Exception raised")
+        except Exception as e:
+            print(f"Exception raised {e}")
             return None
 
 

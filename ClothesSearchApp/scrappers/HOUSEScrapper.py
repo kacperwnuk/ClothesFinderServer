@@ -2,7 +2,7 @@ import re
 from typing import List
 
 from bs4 import BeautifulSoup
-from requests_html import HTMLSession
+from requests_html import HTMLSession, AsyncHTMLSession
 
 from django import db
 from django.db import IntegrityError, transaction
@@ -12,7 +12,7 @@ from ClothesSearchApp.scrappers.abstract import Scrapper, AbstractClothesType, A
 from ClothesSearchApp.scrappers.defaults import ClothesType, SortType, SizeType, ColorType
 
 db.connections.close_all()
-session = HTMLSession()
+# session.browser
 
 
 class _HOUSEClothesType(AbstractClothesType):
@@ -140,15 +140,17 @@ class HOUSEScrapper(Scrapper):
         self.load_key(key)
         page = self.beautiful_page_js(self.detailed_url)
 
-        description = page.find('section', class_='product-description').getText()
+        try:
+            description = page.find('section', class_='product-description').getText()
 
-        composition = ""
-        for li in page.find('ul', class_='composition-list').children:
-            composition += li.getText()
+            composition = ""
+            for li in page.find('ul', class_='composition-list').children:
+                composition += li.getText()
 
-        # print(f"{name}\n{price_text}\n{colors}\n{description}\n{composition}")
-        print(f"{description} {composition}")
-
+            # print(f"{name}\n{price_text}\n{colors}\n{description}\n{composition}")
+            print(f"{description} {composition}")
+        except:
+            pass
         try:
             general_info = Clothes.objects.get(key=key)
             dc = DetailedClothes.objects.create(clothes=general_info, description=description, composition=composition)
@@ -169,10 +171,13 @@ class HOUSEScrapper(Scrapper):
         # print(f"{}\n")
 
     def beautiful_page_js(self, url):
+        session = HTMLSession()
+
         r = session.get(url)
         r.html.render()
-
-        return BeautifulSoup(r.html.html, 'html.parser')
+        html = r.html.html
+        # r.close()
+        return BeautifulSoup(html, 'html.parser')
     #     import os
     #     with open(f"{os.getcwd()}\\tmp\HOUSETshirt.html", encoding='utf-8') as f:
     #         return BeautifulSoup(f, 'html.parser')

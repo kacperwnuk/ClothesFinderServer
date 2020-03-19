@@ -92,10 +92,10 @@ def get_clothes_general_info(requests):
     clothes = []
     for shop_name in shop_names:
         # if shop_name == 'Reserved':
-            scrapper = scrapper_mapping[shop_name]()
-            for tr in trs:
-                if tr['type'] in scrapper.clothes_type_class.clothes_types:
-                    clothes += scrapper.get_clothes_type_general_data(tr)
+        scrapper = scrapper_mapping[shop_name]()
+        for tr in trs:
+            if tr['type'] in scrapper.clothes_type_class.clothes_types:
+                clothes += scrapper.get_clothes_type_general_data(tr)
     # p = Pool(2)
     # clothes = p.map(hs.get_clothes_type_general_data, trs)
     # p.terminate()
@@ -109,7 +109,7 @@ def load_detailed_clothes():
     t1 = perf_counter()
 
     for shop_name in shop_names:
-        if shop_name == 'HM':
+        if shop_name == 'Reserved':
             scrapper = scrapper_mapping[shop_name]()
             shop_requests = [request for request in requests if request['shop'] == shop_name]
             # p = Pool(2)
@@ -183,6 +183,12 @@ def show_db():
     models = [Size, Color, Type, Clothes, DetailedClothes, Shop]
     for model in models:
         print(model.objects.all())
+
+
+def load_db_cloth(request):
+    scrapper = scrapper_mapping[request['shop']]()
+    cloth_info = scrapper.get_clothes_type_detailed_data(request['id'])
+    return cloth_info
 
 
 if __name__ == '__main__':

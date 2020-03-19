@@ -116,6 +116,3 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-import django
-
-django.setup()

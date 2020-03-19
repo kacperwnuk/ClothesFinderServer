@@ -22,6 +22,8 @@ urlpatterns = [
     path('clothes/', clothes_views.ClothesView.as_view()),
     path('detailed/', clothes_views.DetailedClothesView.as_view()),
     path('favourites/<str:username>', clothes_views.FavouriteClothesView.as_view()),
-    path('colors/<str:cloth_type>', clothes_views.TypeColorView.as_view()),
+    path('colors/<str:cloth_type>', clothes_views.ColorView.as_view()),
+    path('types/', clothes_views.TypeView.as_view()),
+    path('sizes/', clothes_views.SizeView.as_view()),
 
 ]

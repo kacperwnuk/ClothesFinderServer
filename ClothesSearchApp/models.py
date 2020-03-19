@@ -53,7 +53,7 @@ class Type(models.Model):
     colors = models.ManyToManyField(Color)
 
     def __str__(self):
-        return f"{self.name} {self.colors}"
+        return f"{self.name}"
 
 
 class Clothes(models.Model):
