@@ -1,20 +1,23 @@
 import itertools
+from pprint import pprint
 
 import django
 from django.contrib.auth.models import User
 from django.db.models import Q, Model
-from rest_framework import status
+from rest_framework import status, authentication, permissions
+from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.generics import get_object_or_404, ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from rest_framework import generics
 from ClothesSearchApp.db_loader import load_db_cloth
 from ClothesSearchApp.models import Clothes, DetailedClothes, Type, Color, Size
 from ClothesSearchApp.scrappers import HMScrapper, HOUSEScrapper, RESERVEDScrapper
 # from ClothesSearchApp.scrappers.main import scrapper_test, get_clothes_general_info
 from ClothesSearchApp.serializers import ClothesSerializer, DetailedClothesSerializer, TypeSerializer, \
-    ColorSerializer
+    ColorSerializer, SizeSerializer, UserSerializer
 
 scrapper_mapping = {
     'HM': HMScrapper,
@@ -23,9 +26,25 @@ scrapper_mapping = {
 }
 
 
-# TODO: wylistowanie wszystkich dostępnych typów ubrań, rozmiarów i kolorów w zależności od typu
+class UserCreateAPI(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+
+class CustomAuthToken(ObtainAuthToken):
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+        return Response(token.key)
+
 
 class ClothesView(ListAPIView):
+    authentication_classes = [authentication.TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     serializer_class = ClothesSerializer
 
     def get_queryset(self):
@@ -62,16 +81,17 @@ class ClothesView(ListAPIView):
         clothes = clothes.filter(filters)
 
         sort_type = self.request.query_params.get('sortType')
-        if sort_type:
-            if sort_type == 'ascending':
-                clothes = clothes.order_by('price')
-            elif sort_type == 'descending':
-                clothes = clothes.order_by('-price')
-
-        return clothes
+        if sort_type == 'ascending':
+            clothes = clothes.order_by('price')
+        elif sort_type == 'descending':
+            clothes = clothes.order_by('-price')
+        return clothes[:50]
 
 
 class DetailedClothesView(APIView):
+    authentication_classes = [authentication.TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
         detailed_clothes = None
         try:
@@ -86,24 +106,26 @@ class DetailedClothesView(APIView):
             }
             detailed_clothes = DetailedClothes.objects.get(clothes__key=key)
         except DetailedClothes.DoesNotExist as e:
-            # if Clothes.objects.filter(key=key):
-            #     detailed_clothes = load_db_cloth(req)
-            #     # print("Nie ma detali ale jest general")
-            # else:
-            return Response(data="Produkt nie występuje w bazie", status=status.HTTP_400_BAD_REQUEST)
+            if Clothes.objects.filter(key=key):
+                detailed_clothes = load_db_cloth(req)
+                # print("Nie ma detali ale jest general")
+            else:
+                return Response(data="Produkt nie występuje w bazie", status=status.HTTP_400_BAD_REQUEST)
         serializer = DetailedClothesSerializer(detailed_clothes)
         return Response(serializer.data)
 
 
 class FavouriteClothesView(APIView):
+    authentication_classes = [authentication.TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, username):
-        user = get_object_or_404(User, username=username)
+    def get(self, request):
+        user = request.auth.user
         serializer = ClothesSerializer(user.clothes_set.all(), many=True)
         return Response(serializer.data)
 
-    def post(self, request, username):
-        user = get_object_or_404(User, username=username)
+    def post(self, request):
+        user = request.auth.user
         try:
             cloth = Clothes.objects.get(key=request.data['key'])
             user.clothes_set.add(cloth)
@@ -113,8 +135,8 @@ class FavouriteClothesView(APIView):
         except KeyError:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, username):
-        user = get_object_or_404(User, username=username)
+    def delete(self, request):
+        user = request.auth.user
         try:
             cloth = Clothes.objects.get(key=request.data['key'])
             user.clothes_set.remove(cloth)
@@ -126,52 +148,31 @@ class FavouriteClothesView(APIView):
 
 
 class TypeView(APIView):
+    authentication_classes = [authentication.TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response(data={'types': [type.name for type in Type.objects.all()]}, status=status.HTTP_200_OK)
+        types = Type.objects.all()
+        serializer = TypeSerializer(types, many=True)
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
 
 
 class ColorView(APIView):
+    authentication_classes = [authentication.TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, cloth_type):
-        colors = [color.name for color in get_object_or_404(Type, name=cloth_type).colors.all()]
-        return Response(data={'colors': colors}, status=status.HTTP_200_OK)
+        colors = get_object_or_404(Type, name=cloth_type).colors.all()
+        serializer = ColorSerializer(colors, many=True)
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
 
 
 class SizeView(APIView):
-    def get(self, request):
-        sizes = [size.name for size in Size.objects.all()]
-        return Response(data={'sizes': sizes}, status=status.HTTP_200_OK)
+    authentication_classes = [authentication.TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
 
-    # def post(self, request, cloth_type):
-    #     # laduj baze
-    #     colors_dict = {
-    #         'T-SHIRT': {'Beżowy', 'Czarny', 'Biały',
-    #                     'Turkusowy', 'Kość słoniowa', 'Niebieski', 'Zielony', 'Szary'},
-    #         'SHIRT': {'Czerwony', 'Brązowy', 'Beżowy', 'Czarny', 'Biały',
-    #                   'Kość słoniowa', 'Niebieski', 'Zielony', 'Szary', 'Granatowy'},
-    #         'PANTS': {'Brązowy', 'Beżowy', 'Czarny', 'Niebieski',
-    #                   'Zielony', 'Szary', 'Granatowy'},
-    #         'SHORTS': {'Czerwony', 'Brązowy', 'Czarny', 'Biały', 'Różowy', 'Niebieski', 'Zielony', 'Szary',
-    #                    },
-    #         'JACKET': {'Brązowy', 'Czarny', 'Niebieski', 'Zielony', 'Szary',
-    #                    'Granatowy'},
-    #         'SWEATER': {'Czerwony', 'Brązowy', 'Beżowy', 'Niebieski', 'Zielony'},
-    #
-    #     }
-    #
-    #     # laduj kolory
-    #     colors = {color for sub_list in colors_dict.values() for color in sub_list}
-    #
-    #     for color in colors:
-    #         Color(name=color).save()
-    #
-    #     for cloth_type in colors_dict:
-    #         Type(cloth_type=cloth_type).save()
-    #
-    #     for key, value in colors_dict.items():
-    #         for color in value:
-    #             c = Color.objects.get(name=color)
-    #             Type.objects.get(cloth_type=key).colors.add(c)
-    #
-    #     return Response(status=status.HTTP_200_OK)
+    def get(self, request):
+        sizes = Size.objects.all()
+        serializer = SizeSerializer(sizes, many=True)
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
+

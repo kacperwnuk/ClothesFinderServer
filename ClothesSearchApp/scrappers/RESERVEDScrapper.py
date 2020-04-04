@@ -1,3 +1,8 @@
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ClothesFinderServer.settings")
+import django
+
+django.setup()
 from ClothesSearchApp.scrappers.HOUSEScrapper import HOUSEScrapper
 from ClothesSearchApp.scrappers.abstract import AbstractClothesType
 from ClothesSearchApp.scrappers.defaults import ClothesType

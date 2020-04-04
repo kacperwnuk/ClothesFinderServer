@@ -114,6 +114,7 @@ class HMScrapper(Scrapper):
                 price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
 
             img_link = product_item.find(class_='image-container').a.img['data-src']
+            img_link = "http:" + img_link
             clothes_id_and_name = product_item.find(class_="item-link")
             name = clothes_id_and_name['title']
             id = re.search(".\\d+.", clothes_id_and_name['href']).group(0)[1:-1]
@@ -125,28 +126,34 @@ class HMScrapper(Scrapper):
             try:
                 c = Clothes.objects.create(key=id, name=name, type=type, price=price, shop=shop, img_link=img_link)
                 products.append(c)
+                print(f"Created: {id} {name} {color} {request}")
+
             except IntegrityError:
                 transaction.commit()
                 c = Clothes.objects.get(key=id)
-                print(f"{id} {name} {color} {request}")
-            finally:
-                c.img_link = img_link
-                c.colors.add(color)
-                c.sizes.add(size)
-                c.save()
-                transaction.commit()
+                print(f"Already exists: {id} {name} {color} {request}")
+            except Exception as e:
+                print(f"{e} {id} {name} {color} {request} {img_link}")
+                return products
+            c.img_link = img_link
+            c.colors.add(color)
+            c.sizes.add(size)
+            c.save()
+            transaction.commit()
         return products
 
     def get_clothes_type_detailed_data(self, key) -> DetailedClothes:
         self.load_key(key)
         page = self.beautiful_page(self.detailed_url)
 
-        description_container = page.find('div', class_='details parbase').find('div',                                                                         class_='content pdp-text pdp-content')
-        description = description_container.find('p', class_='pdp-description-text').getText()
+        description_container = page.find('div', class_='details parbase').find('div',
+                                                                                class_='content pdp-text pdp-content')
+        description = description_container.find('p', class_='pdp-description-text').get_text("\n")
 
         composition = ''
-        for attribute_item in page.find('div', class_='product-details-details sidedrawer__content').find_all_next('div',
-                                                                                                           class_='details-attributes-list-item'):
+        for attribute_item in page.find('div', class_='product-details-details sidedrawer__content').find_all_next(
+                'div',
+                class_='details-attributes-list-item'):
             if attribute_item.dt.getText() == 'Skład':
                 composition = attribute_item.dd.getText()
 
@@ -155,6 +162,8 @@ class HMScrapper(Scrapper):
         try:
             general_info = Clothes.objects.get(key=key)
             dc = DetailedClothes.objects.create(clothes=general_info, description=description, composition=composition)
+            dc.clothes.page_link = self.detailed_url
+            dc.clothes.save()
             dc.save()
             transaction.commit()
             return dc
@@ -163,13 +172,13 @@ class HMScrapper(Scrapper):
             dc = DetailedClothes.objects.get(clothes__key=key)
             dc.composition = composition
             dc.description = description
+            dc.clothes.page_link = self.detailed_url
+            dc.clothes.save()
             dc.save()
             transaction.commit()
         except Exception as e:
             print(f"Exception raised {e}")
             return None
-
-
 
     # def beautiful_page(self, url):
     #     import os

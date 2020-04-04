@@ -15,15 +15,17 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+
 import ClothesSearchApp.views as clothes_views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('clothes/', clothes_views.ClothesView.as_view()),
-    path('detailed/', clothes_views.DetailedClothesView.as_view()),
-    path('favourites/<str:username>', clothes_views.FavouriteClothesView.as_view()),
+    path('admin', admin.site.urls),
+    path('clothes', clothes_views.ClothesView.as_view()),
+    path('detailed', clothes_views.DetailedClothesView.as_view()),
+    path('favourites', clothes_views.FavouriteClothesView.as_view()),
     path('colors/<str:cloth_type>', clothes_views.ColorView.as_view()),
-    path('types/', clothes_views.TypeView.as_view()),
-    path('sizes/', clothes_views.SizeView.as_view()),
-
+    path('types', clothes_views.TypeView.as_view()),
+    path('sizes', clothes_views.SizeView.as_view()),
+    path('auth', clothes_views.CustomAuthToken.as_view()),
+    path('register', clothes_views.UserCreateAPI.as_view()),
 ]

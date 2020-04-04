@@ -61,7 +61,8 @@ class Clothes(models.Model):
     type = models.ForeignKey(Type, null=False, blank=False, on_delete=models.DO_NOTHING)
     name = models.CharField(max_length=100, null=False, blank=False)
     price = models.DecimalField(max_digits=7, decimal_places=2)
-    img_link = models.URLField(null=False, default='')
+    img_link = models.URLField(max_length=300, null=False, default='')
+    page_link = models.URLField(max_length=300, default='')
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
     users = models.ManyToManyField(User)
     sizes = models.ManyToManyField(Size)
@@ -73,7 +74,7 @@ class Clothes(models.Model):
 
 class DetailedClothes(models.Model):
     clothes = models.OneToOneField(Clothes, blank=False, null=False, on_delete=models.CASCADE)
-    description = models.CharField(max_length=200, default='')
+    description = models.CharField(max_length=1000, default='')
     composition = models.CharField(max_length=200, default='')
 
     def __str__(self):

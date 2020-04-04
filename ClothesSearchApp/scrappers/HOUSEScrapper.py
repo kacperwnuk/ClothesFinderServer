@@ -1,9 +1,14 @@
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ClothesFinderServer.settings")
+import django
+
+django.setup()
+
 import re
 from typing import List
 
 from bs4 import BeautifulSoup
 from requests_html import HTMLSession, AsyncHTMLSession
-
 from django import db
 from django.db import IntegrityError, transaction
 from ClothesSearchApp.models import Clothes, DetailedClothes, Shop, Color, Size, Type
@@ -12,6 +17,8 @@ from ClothesSearchApp.scrappers.abstract import Scrapper, AbstractClothesType, A
 from ClothesSearchApp.scrappers.defaults import ClothesType, SortType, SizeType, ColorType
 
 db.connections.close_all()
+
+
 # session.browser
 
 
@@ -138,11 +145,12 @@ class HOUSEScrapper(Scrapper):
 
     def get_clothes_type_detailed_data(self, key) -> DetailedClothes:
         self.load_key(key)
+
         page = self.beautiful_page_js(self.detailed_url)
 
         try:
-            description = page.find('section', class_='product-description').getText()
-
+            description = page.find('section', class_='product-description').get_text("\n")
+            description = description.replace("\n ", "\n")
             composition = ""
             for li in page.find('ul', class_='composition-list').children:
                 composition += li.getText()
@@ -154,6 +162,8 @@ class HOUSEScrapper(Scrapper):
         try:
             general_info = Clothes.objects.get(key=key)
             dc = DetailedClothes.objects.create(clothes=general_info, description=description, composition=composition)
+            dc.clothes.page_link = self.detailed_url
+            dc.clothes.save()
             dc.save()
             transaction.commit()
             return dc
@@ -162,6 +172,8 @@ class HOUSEScrapper(Scrapper):
             dc = DetailedClothes.objects.get(clothes__key=key)
             dc.composition = composition
             dc.description = description
+            dc.clothes.page_link = self.detailed_url
+            dc.clothes.save()
             dc.save()
             transaction.commit()
         except Exception as e:
@@ -176,7 +188,7 @@ class HOUSEScrapper(Scrapper):
         r = session.get(url)
         r.html.render()
         html = r.html.html
-        # r.close()
+        session.close()
         return BeautifulSoup(html, 'html.parser')
     #     import os
     #     with open(f"{os.getcwd()}\\tmp\HOUSETshirt.html", encoding='utf-8') as f:
