@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from ClothesSearchApp.models import DetailedClothes, Clothes, Color, Shop, Type, Size
+from ClothesSearchApp.models import DetailedClothes, Clothes, Color, Shop, Type, Size, Occasion
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -36,6 +36,16 @@ class ClothesSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ['key', 'name', 'price', 'shop', 'type', 'colors', 'sizes', 'img_link']
         model = Clothes
+
+
+class OccasionSerializer(serializers.ModelSerializer):
+    type = serializers.SlugRelatedField(slug_field='name', queryset=Type.objects.all())
+    color = serializers.SlugRelatedField(slug_field='name', queryset=Color.objects.all())
+    size = serializers.SlugRelatedField(slug_field='name', queryset=Size.objects.all())
+
+    class Meta:
+        fields = '__all__'
+        model = Occasion
 
 
 class DetailedClothesSerializer(serializers.ModelSerializer):

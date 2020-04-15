@@ -28,4 +28,6 @@ urlpatterns = [
     path('sizes', clothes_views.SizeView.as_view()),
     path('auth', clothes_views.CustomAuthToken.as_view()),
     path('register', clothes_views.UserCreateAPI.as_view()),
+    path('occasions', clothes_views.OccasionView.as_view()),
+    path('email', clothes_views.email_favourites)
 ]

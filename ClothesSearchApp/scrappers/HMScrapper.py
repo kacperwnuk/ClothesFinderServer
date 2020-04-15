@@ -1,3 +1,9 @@
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ClothesFinderServer.settings")
+import django
+
+django.setup()
+
 import re
 from typing import List
 

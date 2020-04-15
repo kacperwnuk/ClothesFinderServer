@@ -79,3 +79,15 @@ class DetailedClothes(models.Model):
 
     def __str__(self):
         return f"{self.clothes.__str__()} {self.composition}"
+
+
+class Occasion(models.Model):
+    key = models.CharField(max_length=200, null=False)
+    type = models.ForeignKey(Type, null=False, blank=False, on_delete=models.DO_NOTHING)
+    color = models.ForeignKey(Color, null=False, on_delete=models.DO_NOTHING)
+    size = models.ForeignKey(Size, null=False, on_delete=models.DO_NOTHING)
+    price = models.DecimalField(null=False, max_digits=7, decimal_places=2)
+    user = models.ForeignKey(User, null=False, on_delete=models.DO_NOTHING)
+
+    def __str__(self):
+        return f"{self.type} {self.color} {self.size} {self.price}"

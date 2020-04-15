@@ -1,23 +1,24 @@
-import itertools
 from pprint import pprint
 
 import django
 from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, Model
 from rest_framework import status, authentication, permissions
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.decorators import api_view, renderer_classes
+from rest_framework.decorators import api_view, renderer_classes, authentication_classes, permission_classes
 from rest_framework.generics import get_object_or_404, ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import generics
 from ClothesSearchApp.db_loader import load_db_cloth
-from ClothesSearchApp.models import Clothes, DetailedClothes, Type, Color, Size
+from ClothesSearchApp.models import Clothes, DetailedClothes, Type, Color, Size, Occasion
 from ClothesSearchApp.scrappers import HMScrapper, HOUSEScrapper, RESERVEDScrapper
-# from ClothesSearchApp.scrappers.main import scrapper_test, get_clothes_general_info
 from ClothesSearchApp.serializers import ClothesSerializer, DetailedClothesSerializer, TypeSerializer, \
-    ColorSerializer, SizeSerializer, UserSerializer
+    ColorSerializer, SizeSerializer, UserSerializer, OccasionSerializer
+
+from ClothesSearchApp.mail import sender
 
 scrapper_mapping = {
     'HM': HMScrapper,
@@ -138,13 +139,52 @@ class FavouriteClothesView(APIView):
     def delete(self, request):
         user = request.auth.user
         try:
-            cloth = Clothes.objects.get(key=request.data['key'])
+            key = request.data['key']
+            if key == 'all':
+                user.clothes_set.clear()
+                return Response(data={}, status=status.HTTP_200_OK)
+
+            cloth = Clothes.objects.get(key=key)
             user.clothes_set.remove(cloth)
             user.save()
             serializer = ClothesSerializer(user.clothes_set.all(), many=True)
             return Response(serializer.data)
         except KeyError:
             return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+class OccasionView(APIView):
+    authentication_classes = [authentication.TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.auth.user
+        serializer = OccasionSerializer(user.occasion_set.all(), many=True)
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        user = request.auth.user
+        key = request.data['key']
+        type_name = request.data['type']
+        color_name = request.data['color']
+        size_name = request.data['size']
+        price = request.data['price']
+        occasion = Occasion(key=key, type=Type.objects.get(name=type_name), color=Color.objects.get(name=color_name),
+                            size=Size.objects.get(name=size_name), price=price, user=user)
+        occasion.save()
+        serializer = OccasionSerializer(occasion)
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        user = request.auth.user
+        key = request.data['key']
+        try:
+            occasion = Occasion.objects.get(key=key, user=user)
+            serializer = OccasionSerializer(occasion)
+            occasion.delete()
+            return Response(data=serializer.data, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response(data="There is no key for this user", status=status.HTTP_400_BAD_REQUEST)
 
 
 class TypeView(APIView):
@@ -176,3 +216,15 @@ class SizeView(APIView):
         serializer = SizeSerializer(sizes, many=True)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
 
+
+@api_view(['GET'])
+@authentication_classes([authentication.TokenAuthentication])
+@permission_classes([permissions.IsAuthenticated])
+def email_favourites(request):
+    user = request.auth.user
+
+    clothes_urls = [clothes.page_link for clothes in user.clothes_set.all()]
+    message = "".join([f"{url} \n" for url in clothes_urls])
+    sender.send_mail(user.email, message)
+
+    return Response(data="Email sent.", status=status.HTTP_200_OK)
