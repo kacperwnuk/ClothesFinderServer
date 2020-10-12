@@ -86,7 +86,7 @@ class ClothesView(ListAPIView):
             clothes = clothes.order_by('price')
         elif sort_type == 'descending':
             clothes = clothes.order_by('-price')
-        return clothes[:50]
+        return clothes[:100]
 
 
 class DetailedClothesView(APIView):

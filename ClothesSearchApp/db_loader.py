@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ClothesFinderServer.settings")
 import django
@@ -168,7 +169,7 @@ def _create_detailed_request(cloth_id, shop_name):
 
 
 def load_users():
-    User.objects.create_user('test', 'test@o2.com', 'test').save()
+    User.objects.create_user('test', 'test@o2.com', 'test', last_login=datetime.now()).save()
 
 
 def load_db():
@@ -214,10 +215,21 @@ request = {
     'shop': 'HM'
 }
 
+detailed_request_reserved = {
+    'id': 'yl446-59m',
+    'shop': 'Reserved',
+}
+
+detailed_request_house = {
+    'id': 'xl004-78x',
+    'shop': 'House',
+}
+
+
 if __name__ == '__main__':
     load_db()
     # clear_db()
     # show_db()
     # load_general_clothes()
     # load_detailed_clothes()
-    # load_db_cloth(request)
+    # load_db_cloth(detailed_request_house)
