@@ -1,5 +1,3 @@
-from pprint import pprint
-
 import django
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -52,32 +50,20 @@ class ClothesView(ListAPIView):
         clothes = Clothes.objects.all()
         filters = Q()
 
-        type = self.request.query_params.get('type')
-        if type:
+        if type := self.request.query_params.get('type'):
             filters &= Q(type__name=type)
-            # clothes = clothes.filter(type=type)
-        else:
-            pass
 
-        color = self.request.query_params.get('color')
-        if color:
+        if color := self.request.query_params.get('color'):
             filters &= Q(colors__name=color)
-            # clothes = clothes.filter(detailedclothes__colors__in=color)
 
-        size = self.request.query_params.get('size')
-        if size:
+        if size := self.request.query_params.get('size'):
             filters &= Q(sizes__name=size)
-            # clothes = clothes.filter(sizes_)
 
-        lower_price = self.request.query_params.get('lowerPrice')
-        if lower_price:
+        if lower_price := self.request.query_params.get('lowerPrice'):
             filters &= Q(price__gte=lower_price)
-            # clothes = clothes.filter(price__gte=lower_price)
 
-        higher_price = self.request.query_params.get('higherPrice')
-        if higher_price:
+        if higher_price := self.request.query_params.get('higherPrice'):
             filters &= Q(price__lte=higher_price)
-            # clothes = clothes.filter(price__lte=higher_price)
 
         clothes = clothes.filter(filters)
 

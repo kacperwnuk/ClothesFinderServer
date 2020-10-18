@@ -96,7 +96,7 @@ def scrapper_test(request):
     return hs.get_clothes_type_general_data(tr)
 
 
-scrapper_classes
+
 
 if __name__ == '__main__':
     # find_clothes()
@@ -130,3 +130,9 @@ if __name__ == '__main__':
     # p.join()
     # t2 = perf_counter()
     # print(t2 - t1)
+    from bs4 import BeautifulSoup
+    import requests
+    r = requests.get('https://www.lancerto.com/pl/odziez/marynarki.html')
+    soup = BeautifulSoup(r.text, 'html.parser')
+    with open("lancerto.html", mode="w", encoding="utf-8") as f:
+        f.write(soup.prettify())
