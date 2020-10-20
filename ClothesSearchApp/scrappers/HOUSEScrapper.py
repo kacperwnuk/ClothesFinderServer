@@ -1,3 +1,4 @@
+import logging
 import os
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ClothesFinderServer.settings")
 import django
@@ -6,19 +7,14 @@ django.setup()
 
 import re
 from typing import List
-
 from bs4 import BeautifulSoup
 from requests_html import HTMLSession, AsyncHTMLSession
 from django import db
-from django.db import IntegrityError, transaction
-from ClothesSearchApp.models import Clothes, DetailedClothes, Shop, Color, Size, Type
 from ClothesSearchApp.scrappers.abstract import Scrapper, AbstractClothesType, AbstractSortType, AbstractSizeType, \
     AbstractColorType
 from ClothesSearchApp.scrappers.defaults import ClothesType, SortType, SizeType, ColorType
 
 db.connections.close_all()
-
-
 # session.browser
 
 
@@ -98,93 +94,44 @@ class HOUSEScrapper(Scrapper):
             url += f"{filter.value}/"
         return url
 
-    def get_clothes_type_general_data(self, request) -> List[Clothes]:
-        self.load_filters(request)
-        page = self.beautiful_page(self.general_url)
-        products_container = page.find('section', id='categoryProducts')
-
+    def _scrap_general_data(self, page) -> List[Scrapper.BaseClothesInfo]:
         products = []
-        try:
+        products_container = page.find('section', id='categoryProducts')
+        if products_container:
             for product_item in products_container.find_all_next('article', class_='es-product'):
-                # print(product_item, end="\n\n\n")
-                sale_text = product_item.find('p', class_='es-discount-price')
-                if not sale_text:
-                    price_text = product_item.find('p', class_="es-final-price").findChildren('span')[0].getText()
-                    price = float(re.search("\\d+,\\d+", price_text).group(0).replace(',', '.'))
-                else:
-                    sale_text = sale_text.findChildren('span')[0]
-                    price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
-
-                id = str.lower(product_item['data-sku'])
-                name = product_item.find('figcaption', class_='es-product-name').getText()
-                # products.append(Clothes(id, name, price))
-                img_link = product_item.figure.a.img['data-src']
-
-                color = Color.objects.get(name=request['color'].value)
-                size = Size.objects.get(name=request['size'].value)
-                shop = Shop.objects.get(name=self.shop_name)
-                type = Type.objects.get(name=request['type'].value)
                 try:
-                    c = Clothes.objects.create(key=id, name=name, type=type, price=price, shop=shop)
-                    products.append(c)
-                    print(f"{id} {name} {color} {request}")
-                except IntegrityError:
-                    transaction.commit()
-                    c = Clothes.objects.get(key=id)
-                    print(f"Already exists! {id} {name} {color} {request}")
-                finally:
-                    c.img_link = img_link
-                    c.colors.add(color)
-                    c.sizes.add(size)
-                    c.save()
-                    transaction.commit()
-        except:
-            print(f"Data not found! {request} {self.general_url}")
+                    sale_text = product_item.find('p', class_='es-discount-price')
+                    if not sale_text:
+                        price_text = product_item.find('p', class_="es-final-price").findChildren('span')[0].getText()
+                        price = float(re.search("\\d+,\\d+", price_text).group(0).replace(',', '.'))
+                    else:
+                        sale_text = sale_text.findChildren('span')[0]
+                        price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
 
+                    id = str.lower(product_item['data-sku'])
+                    name = product_item.find('figcaption', class_='es-product-name').getText()
+                    img_link = product_item.figure.a.img['src']
+                    products.append(Scrapper.BaseClothesInfo(id, name, price, img_link))
+                except Exception as e:
+                    logging.warning(f"{self.shop_name} -> Cannot scrap product {product_item}!\n {e}")
+        else:
+            logging.info(f"{self.shop_name} no clothes for {self.general_url}")
         return products
 
-    def get_clothes_type_detailed_data(self, key) -> DetailedClothes:
-        self.load_key(key)
+    def _scrap_detailed_data(self, page) -> Scrapper.DetailedClothesInfo:
+        description = page.find('section', class_='product-description').get_text("\n")
+        description = description.replace("\n ", "\n")
+        composition = ""
+        for li in page.find('ul', class_='composition-list').children:
+            composition += li.getText()
 
-        page = self.beautiful_page_js(self.detailed_url)
+        # print(f"{name}\n{price_text}\n{colors}\n{description}\n{composition}")
+        print(f"{description} {composition}")
+        return Scrapper.DetailedClothesInfo(description, composition)
 
-        try:
-            description = page.find('section', class_='product-description').get_text("\n")
-            description = description.replace("\n ", "\n")
-            composition = ""
-            for li in page.find('ul', class_='composition-list').children:
-                composition += li.getText()
-
-            # print(f"{name}\n{price_text}\n{colors}\n{description}\n{composition}")
-            print(f"{description} {composition}")
-        except:
-            pass
-        try:
-            general_info = Clothes.objects.get(key=key)
-            dc = DetailedClothes.objects.create(clothes=general_info, description=description, composition=composition)
-            dc.clothes.page_link = self.detailed_url
-            dc.clothes.save()
-            dc.save()
-            transaction.commit()
-            return dc
-        except IntegrityError:
-            print(f"Integrity Error ")
-            dc = DetailedClothes.objects.get(clothes__key=key)
-            dc.composition = composition
-            dc.description = description
-            dc.clothes.page_link = self.detailed_url
-            dc.clothes.save()
-            dc.save()
-            transaction.commit()
-        except Exception as e:
-            print(f"Exception raised {e}")
-            return None
-
-        # print(f"{}\n")
-
-    def beautiful_page_js(self, url):
+    def _get_beautiful_page(self, url) -> BeautifulSoup:
         session = HTMLSession()
-
+        print(url)
         r = session.get(url)
         r.html.render()
         html = r.html.html

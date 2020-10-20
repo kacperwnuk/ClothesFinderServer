@@ -1,3 +1,4 @@
+import logging
 import os
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ClothesFinderServer.settings")
 import django
@@ -8,9 +9,6 @@ import re
 from typing import List
 
 from django import db
-from django.db import IntegrityError, transaction
-
-from ClothesSearchApp.models import Clothes, DetailedClothes, Shop, Color, Size, Type
 from ClothesSearchApp.scrappers.abstract import AbstractSortType, AbstractClothesType, AbstractSizeType, Scrapper, \
     AbstractColorType
 from ClothesSearchApp.scrappers.defaults import SortType, ClothesType, SizeType, ColorType
@@ -24,7 +22,6 @@ class _HMSortType(AbstractSortType):
         SortType.ASCENDING: 'ascPrice',
         SortType.DESCENDING: 'descPrice'
     }
-    "Key used in url"
     key = 'sort'
 
     def __init__(self, sort_type: SortType):
@@ -47,12 +44,12 @@ class _HMClothesType(AbstractClothesType):
 
 class _HMSizeType(AbstractSizeType):
     size_types = {
-        SizeType.XS: '296_xs_3_menswear',
-        SizeType.S: '298_s_3_menswear',
-        SizeType.M: '300_m_3_menswear',
-        SizeType.L: '301_l_3_menswear',
-        SizeType.XL: '303_xl_3_menswear',
-        SizeType.XXL: '305_xxl_3_menswear'
+        SizeType.XS: '299_xs_3_menswear',
+        SizeType.S: '302_s_3_menswear',
+        SizeType.M: '305_m_3_menswear',
+        SizeType.L: '306_l_3_menswear',
+        SizeType.XL: '308_xl_3_menswear',
+        SizeType.XXL: '311_xxl_3_menswear'
     }
     key = 'sizes'
 
@@ -67,12 +64,10 @@ class _HMColorType(AbstractColorType):
         ColorType.GREEN: 'zielony_008000',
         ColorType.BLUE: 'niebieski_0000ff',
         ColorType.PINK: 'różowy_ffc0cb',
-        # ColorType.WHITE_BONE: 'Kość słoniowa',
         ColorType.RED: 'czerwony_ff0000',
         ColorType.GREY: 'szary_808080',
         ColorType.BEIGE: 'beżowy_f5f5dc',
         ColorType.BROWN: 'brązowy_a52a2a',
-        # ColorType.DARK_BLUE: 'Granatowy',
         ColorType.TURQUOISE: 'turkusowy_40e0d0',
     }
     key = 'colorWithNames'
@@ -91,7 +86,7 @@ class HMScrapper(Scrapper):
     clothes_type_class = _HMClothesType
 
     general_page_prefix = "https://www2.hm.com/pl_pl/on/produkty/"
-    detail_page_prefix = "https://www2.hm.com/pl_pl/productpage."
+    detail_page_prefix = "https://www2.hm.com/pl_pl/productpage/"
 
     def __init__(self):
         super().__init__()
@@ -103,55 +98,32 @@ class HMScrapper(Scrapper):
     def generate_general_page_url(self):
         return f"{self.general_page_prefix}{self.url_filter}.html"
 
-    def get_clothes_type_general_data(self, request) -> List[Clothes]:
-
-        self.load_filters(request)
-        page = self.beautiful_page(self.general_url)
-        products_container = page.find('ul', class_='products-listing small')
-
+    def _scrap_general_data(self, page) -> List[Scrapper.BaseClothesInfo]:
         products = []
-        for product_item in products_container.find_all_next('li', class_='product-item'):
-            # print(product_item, end="\n\n\n")
-            sale_text = product_item.find(class_='price sale')
-            if not sale_text:
-                price_text = product_item.find(class_="price regular").getText()
-                price = float(re.search("\\d+,\\d+", price_text).group(0).replace(',', '.'))
-            else:
-                price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
+        products_container = page.find('ul', class_='products-listing small')
+        if products_container:
+            for product_item in products_container.find_all_next('li', class_='product-item'):
+                try:
+                    sale_text = product_item.find(class_='price sale')
+                    if not sale_text:
+                        price_text = product_item.find(class_="price regular").getText()
+                        price = float(re.search("\\d+,\\d+", price_text).group(0).replace(',', '.'))
+                    else:
+                        price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
 
-            img_link = product_item.find(class_='image-container').a.img['data-src']
-            img_link = "http:" + img_link
-            clothes_id_and_name = product_item.find(class_="item-link")
-            name = clothes_id_and_name['title']
-            id = re.search(".\\d+.", clothes_id_and_name['href']).group(0)[1:-1]
-
-            color = Color.objects.get(name=request['color'].value)
-            size = Size.objects.get(name=request['size'].value)
-            shop = Shop.objects.get(name=self.shop_name)
-            type = Type.objects.get(name=request['type'].value)
-            try:
-                c = Clothes.objects.create(key=id, name=name, type=type, price=price, shop=shop, img_link=img_link)
-                products.append(c)
-                print(f"Created: {id} {name} {color} {request}")
-
-            except IntegrityError:
-                transaction.commit()
-                c = Clothes.objects.get(key=id)
-                print(f"Already exists: {id} {name} {color} {request}")
-            except Exception as e:
-                print(f"{e} {id} {name} {color} {request} {img_link}")
-                return products
-            c.img_link = img_link
-            c.colors.add(color)
-            c.sizes.add(size)
-            c.save()
-            transaction.commit()
+                    img_link = product_item.find(class_='image-container').a.img['data-src']
+                    img_link = "http:" + img_link
+                    clothes_id_and_name = product_item.find(class_="item-link")
+                    name = clothes_id_and_name['title']
+                    id = re.search(".\\d+.", clothes_id_and_name['href']).group(0)[1:-1]
+                    products.append(Scrapper.BaseClothesInfo(id, name, price, img_link))
+                except Exception as e:
+                    logging.warning(f"{self.shop_name} -> Cannot scrap product {product_item}!\n {e}")
+        else:
+            logging.info(f"{self.shop_name} no clothes for {self.general_url}")
         return products
 
-    def get_clothes_type_detailed_data(self, key) -> DetailedClothes:
-        self.load_key(key)
-        page = self.beautiful_page(self.detailed_url)
-
+    def _scrap_detailed_data(self, page) -> Scrapper.DetailedClothesInfo:
         description_container = page.find('div', class_='details parbase').find('div',
                                                                                 class_='content pdp-text pdp-content')
         description = description_container.find('p', class_='pdp-description-text').get_text("\n")
@@ -162,31 +134,13 @@ class HMScrapper(Scrapper):
                 class_='details-attributes-list-item'):
             if attribute_item.dt.getText() == 'Skład':
                 composition = attribute_item.dd.getText()
+        return Scrapper.DetailedClothesInfo(description, composition)
 
-        # print(f"{name}\n{price}\n{colors}\n{description}\n{composition}")
-        print(f"{description} {composition}")
-        try:
-            general_info = Clothes.objects.get(key=key)
-            dc = DetailedClothes.objects.create(clothes=general_info, description=description, composition=composition)
-            dc.clothes.page_link = self.detailed_url
-            dc.clothes.save()
-            dc.save()
-            transaction.commit()
-            return dc
-        except IntegrityError:
-            print(f"Integrity Error ")
-            dc = DetailedClothes.objects.get(clothes__key=key)
-            dc.composition = composition
-            dc.description = description
-            dc.clothes.page_link = self.detailed_url
-            dc.clothes.save()
-            dc.save()
-            transaction.commit()
-        except Exception as e:
-            print(f"Exception raised {e}")
-            return None
+    def generate_query_string(self) -> str:
+        query = "?"
+        for filter in self.query_filters:
+            query += f"{filter.key}={filter.value}&"
+        query += f"page-size=100"
+        return query
 
-    # def beautiful_page(self, url):
-    #     import os
-    #     with open(f"{os.getcwd()}\\tmp\HMTshirt.html", encoding='utf-8') as f:
-    #         return BeautifulSoup(f, 'html.parser')
+

@@ -27,4 +27,4 @@ def send_mail(receiver_email, body):
         server.login(email, password)
 
         message = create_message(body)
-        server.sendmail(email, email, message.as_string())
+        server.sendmail(email, receiver_email, message.as_string())
