@@ -44,12 +44,12 @@ class _HMClothesType(AbstractClothesType):
 
 class _HMSizeType(AbstractSizeType):
     size_types = {
-        SizeType.XS: '296_xs_3_menswear',
-        SizeType.S: '298_s_3_menswear',
-        SizeType.M: '300_m_3_menswear',
-        SizeType.L: '301_l_3_menswear',
-        SizeType.XL: '303_xl_3_menswear',
-        SizeType.XXL: '305_xxl_3_menswear'
+        SizeType.XS: '299_xs_3_menswear',
+        SizeType.S: '302_s_3_menswear',
+        SizeType.M: '305_m_3_menswear',
+        SizeType.L: '306_l_3_menswear',
+        SizeType.XL: '308_xl_3_menswear',
+        SizeType.XXL: '311_xxl_3_menswear'
     }
     key = 'sizes'
 
@@ -101,23 +101,26 @@ class HMScrapper(Scrapper):
     def _scrap_general_data(self, page) -> List[Scrapper.BaseClothesInfo]:
         products = []
         products_container = page.find('ul', class_='products-listing small')
-        for product_item in products_container.find_all_next('li', class_='product-item'):
-            try:
-                sale_text = product_item.find(class_='price sale')
-                if not sale_text:
-                    price_text = product_item.find(class_="price regular").getText()
-                    price = float(re.search("\\d+,\\d+", price_text).group(0).replace(',', '.'))
-                else:
-                    price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
+        if products_container:
+            for product_item in products_container.find_all_next('li', class_='product-item'):
+                try:
+                    sale_text = product_item.find(class_='price sale')
+                    if not sale_text:
+                        price_text = product_item.find(class_="price regular").getText()
+                        price = float(re.search("\\d+,\\d+", price_text).group(0).replace(',', '.'))
+                    else:
+                        price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
 
-                img_link = product_item.find(class_='image-container').a.img['data-src']
-                img_link = "http:" + img_link
-                clothes_id_and_name = product_item.find(class_="item-link")
-                name = clothes_id_and_name['title']
-                id = re.search(".\\d+.", clothes_id_and_name['href']).group(0)[1:-1]
-                products.append(Scrapper.BaseClothesInfo(id, name, price, img_link))
-            except Exception as e:
-                logging.warning(f"{self.shop_name} -> Cannot scrap product {product_item}!\n {e}")
+                    img_link = product_item.find(class_='image-container').a.img['data-src']
+                    img_link = "http:" + img_link
+                    clothes_id_and_name = product_item.find(class_="item-link")
+                    name = clothes_id_and_name['title']
+                    id = re.search(".\\d+.", clothes_id_and_name['href']).group(0)[1:-1]
+                    products.append(Scrapper.BaseClothesInfo(id, name, price, img_link))
+                except Exception as e:
+                    logging.warning(f"{self.shop_name} -> Cannot scrap product {product_item}!\n {e}")
+        else:
+            logging.info(f"{self.shop_name} no clothes for {self.general_url}")
         return products
 
     def _scrap_detailed_data(self, page) -> Scrapper.DetailedClothesInfo:

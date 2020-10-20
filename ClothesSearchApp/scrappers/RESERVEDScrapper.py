@@ -23,5 +23,5 @@ class RESERVEDScrapper(HOUSEScrapper):
     shop_name = 'Reserved'
     clothes_type_class = _RESERVEDClothesType
 
-    general_page_prefix = 'https://www.reserved.com/pl/pl/man/all-3/clothes/'
+    general_page_prefix = 'https://www.reserved.com/pl/pl/man/clothes/'
     detail_page_prefix = 'https://www.reserved.com/pl/pl/'

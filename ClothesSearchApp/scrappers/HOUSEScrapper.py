@@ -97,22 +97,25 @@ class HOUSEScrapper(Scrapper):
     def _scrap_general_data(self, page) -> List[Scrapper.BaseClothesInfo]:
         products = []
         products_container = page.find('section', id='categoryProducts')
-        for product_item in products_container.find_all_next('article', class_='es-product'):
-            try:
-                sale_text = product_item.find('p', class_='es-discount-price')
-                if not sale_text:
-                    price_text = product_item.find('p', class_="es-final-price").findChildren('span')[0].getText()
-                    price = float(re.search("\\d+,\\d+", price_text).group(0).replace(',', '.'))
-                else:
-                    sale_text = sale_text.findChildren('span')[0]
-                    price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
+        if products_container:
+            for product_item in products_container.find_all_next('article', class_='es-product'):
+                try:
+                    sale_text = product_item.find('p', class_='es-discount-price')
+                    if not sale_text:
+                        price_text = product_item.find('p', class_="es-final-price").findChildren('span')[0].getText()
+                        price = float(re.search("\\d+,\\d+", price_text).group(0).replace(',', '.'))
+                    else:
+                        sale_text = sale_text.findChildren('span')[0]
+                        price = float(re.search("\\d+,\\d+", sale_text.getText()).group(0).replace(',', '.'))
 
-                id = str.lower(product_item['data-sku'])
-                name = product_item.find('figcaption', class_='es-product-name').getText()
-                img_link = product_item.figure.a.img['data-src']
-                products.append(Scrapper.BaseClothesInfo(id, name, price, img_link))
-            except Exception as e:
-                logging.warning(f"{self.shop_name} -> Cannot scrap product {product_item}!\n {e}")
+                    id = str.lower(product_item['data-sku'])
+                    name = product_item.find('figcaption', class_='es-product-name').getText()
+                    img_link = product_item.figure.a.img['src']
+                    products.append(Scrapper.BaseClothesInfo(id, name, price, img_link))
+                except Exception as e:
+                    logging.warning(f"{self.shop_name} -> Cannot scrap product {product_item}!\n {e}")
+        else:
+            logging.info(f"{self.shop_name} no clothes for {self.general_url}")
         return products
 
     def _scrap_detailed_data(self, page) -> Scrapper.DetailedClothesInfo:
